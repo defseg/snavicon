@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<title>snavicon</title>
+	<style type='text/css'>
+	body {
+		background-color: #000;
+		color: #FFF;
+	}
+	</style>
+</head>
+<body>
+	<div>WASD to move.</div>
+
+	<canvas id='cvs' width='16' height='16'></canvas>
+
+	<script type="text/javascript">
+		function randInt(max) {
+			return Math.floor(Math.random() * max);
+		}
+
+		class Snake {
+			constructor (maxX, maxY) {
+				this.x = 0;
+				this.y = 0;
+
+				this.maxX = maxX;
+				this.maxY = maxY;
+
+				this.length = 3;
+				this.body = [[this.x, this.y]];
+				this.newDir = null;
+				
+				this.direction = 1; // 0 = up, 1 = right, 2 = down, 3 = left
+
+				// bind this here, why not
+				document.onkeydown = e => this.turnFromKey(e.keyCode);
+			}
+
+			move () {
+				this.body.push([this.x, this.y]);
+
+				this.turn();
+				if (this.direction === 0) {
+					this.y--;
+				} else if (this.direction === 1) {
+					this.x++;
+				} else if (this.direction === 2) {
+					this.y++;
+				} else if (this.direction === 3) {
+					this.x--;
+				}
+
+				if (this.body.length === this.length) this.body.shift();
+			}
+
+			eat () {
+				this.length++;
+			}
+
+			isCollidedWith (x, y) {
+				return this.body.some(i => x === i[0] && y === i[1])
+			}
+
+			isCollidedWithSelf () {
+				return this.isCollidedWith(this.x, this.y);
+			}
+
+			isOutOfBounds () {
+				return this.x < 0 || this.x >= this.maxX || this.y < 0 || this.y >= this.maxY;
+			}
+
+			static keyToDir (keyCode) {
+				// left = 37, up = 38, right = 39, down = 40
+				return {37: 3, 38: 0, 39: 1, 40: 2}[keyCode]
+			}
+
+			turnFromKey (keyCode) {
+				const newDir = Snake.keyToDir(keyCode);
+				if (newDir === undefined) return;
+				this.queueTurn(newDir);
+			}
+
+			queueTurn (newDir) {
+				this.newDir = newDir;
+			}
+
+			turn () {
+				if (this.newDir === null || this.newDir % 2 === this.direction % 2) return;
+				this.direction = this.newDir;
+				this.newDir = null;
+			}
+		}
+
+		class Game {
+			constructor (maxX, maxY) {
+				this.maxX = maxX;
+				this.maxY = maxY;
+
+				this.snake = new Snake(this.maxX, this.maxY);
+				this.food = null;
+				this.makeFood();
+			}
+
+			makeFood () {
+				do {
+					var x = randInt(this.maxX);
+					var y = randInt(this.maxY);
+				} while (this.snake.isCollidedWith(x, y)); // don't spawn food on top of the snake
+				this.food = [x, y];
+			}
+
+			tick () { // returns true if the game is still on and false if it's over
+				this.snake.move();
+
+				if (this.snake.isCollidedWithSelf()) {
+					return false;
+				}
+
+				if (this.snake.isOutOfBounds()) {
+					return false;
+				}
+
+				if (this.snake.isCollidedWith(...this.food)) {
+					this.snake.eat();
+					this.makeFood();
+				}
+
+				return true;
+			}
+		}
+
+		class GameView {
+			constructor (icon) {
+				this.canvas = document.getElementById('cvs');
+				this.ctx = this.canvas.getContext('2d');
+
+				this.maxX = this.canvas.width;
+				this.maxY = this.canvas.height;
+				this.game = null;
+				this.newGame();
+
+				this.icon = icon;
+			}
+
+			updateFavicon () {
+				var oldIcon = this.icon;
+				var newIcon = oldIcon.cloneNode(true);
+				newIcon.setAttribute('href', this.canvas.toDataURL());
+				var head = oldIcon.parentNode;
+				head.replaceChild(newIcon, oldIcon);
+				this.icon = newIcon;
+			}
+
+			newGame () {
+				this.game = new Game(this.maxX, this.maxY);
+			}
+
+			tick () {
+				const isGameOn = this.game.tick();
+				if (!isGameOn) {
+					this.newGame();
+					return;
+				}
+
+				this.ctx.globalCompositeOperation = 'source-over';
+				this.ctx.fillStyle = '#FFF';
+				this.ctx.fillRect(0, 0, this.maxX, this.maxY);
+
+				// draw snake
+				this.ctx.fillStyle = '#000';
+				for (let i of this.game.snake.body) {
+					this.ctx.fillRect(i[0], i[1], 1, 1);
+				}
+				// draw food
+				this.ctx.fillStyle = '#F00';
+				this.ctx.fillRect(this.game.food[0], this.game.food[1], 1, 1);
+				this.updateFavicon();
+			}
+		}
+
+		// make favicon element
+		var head = document.head || document.getElementsByTagName('head')[0];
+		var icon = document.createElement('link');
+		icon.setAttribute('rel', 'shortcut icon');
+		head.appendChild(icon);
+
+		var gv = new GameView(icon);
+		window.setInterval(gv.tick.bind(gv), 200);
+	</script>
+</body>
+</html>
