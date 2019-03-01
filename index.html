@@ -67,7 +67,11 @@
 			}
 
 			isCollidedWith (x, y) {
-				return this.body.some(i => x === i[0] && y === i[1])
+				return this.body.some(i => x === i[0] && y === i[1]);
+			}
+
+			isCollidedWithAny (arr) {
+				return arr.some(i => this.isCollidedWith(...i));
 			}
 
 			isCollidedWithSelf () {
@@ -80,7 +84,7 @@
 
 			static keyToDir (keyCode) {
 				// left = 37, up = 38, right = 39, down = 40
-				return {37: 3, 38: 0, 39: 1, 40: 2}[keyCode]
+				return {37: 3, 38: 0, 39: 1, 40: 2}[keyCode];
 			}
 
 			turnFromKey (keyCode) {
@@ -112,10 +116,10 @@
 
 			makeFood () {
 				do {
-					var x = randInt(this.maxX);
-					var y = randInt(this.maxY);
+					var x = randInt(this.maxX - 1); // foods are 2x2
+					var y = randInt(this.maxY - 1);
 				} while (this.snake.isCollidedWith(x, y)); // don't spawn food on top of the snake
-				this.food = [x, y];
+				this.food = [[x, y], [x+1, y], [x, y+1], [x+1, y+1]];
 			}
 
 			tick () { // returns true if the game is still on and false if it's over
@@ -129,7 +133,7 @@
 					return false;
 				}
 
-				if (this.snake.isCollidedWith(...this.food)) {
+				if (this.snake.isCollidedWithAny(this.food)) {
 					this.snake.eat();
 					this.makeFood();
 				}
@@ -182,7 +186,7 @@
 				}
 				// draw food
 				this.ctx.fillStyle = '#F00';
-				this.ctx.fillRect(this.game.food[0], this.game.food[1], 1, 1);
+				this.ctx.fillRect(this.game.food[0][0], this.game.food[1][1], 2, 2);
 				this.updateFavicon();
 			}
 		}
